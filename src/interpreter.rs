@@ -124,7 +124,21 @@ fn run_node(input: &Node, envr: &Envr) -> Node {
                     run_node(fun_body, envr)
                 }
                 ref n => {
-                    let mut reduced_els = vec!(run_node(n, envr));
+                    // Some pretty crufty logic down here.
+                    // We are inside an s-expr and inspecting the first element.
+                    let mut reduced_els = match run_node(n, envr) {
+                        // First element is an empty s-expr, forget it:
+                        // (() ...) --> (...)
+                        Node::S(ref ns) if ns.len() == 0 => Vec::new(),
+                        // First and only element is a value, promote it to the value.
+                        // (v) --> v
+                        ref r if ns.len() == 1 && r.is_value() => return r.clone(),
+                        // Otherwise just reduce the first element.
+                        // n0 --> n0'
+                        // ---------------------
+                        // (n0 ...) -> (n0' ...)
+                        r => vec!(r),
+                    };
                     reduced_els.extend(ns[1..].iter().map(|n| n.clone()));
                     run_node(&Node::S(reduced_els), envr)
                 }
@@ -170,6 +184,15 @@ mod test {
         assert!(run_node(&s, envr) == s);
         let s = s!();
         assert!(run_node(&s, envr) == s);
+    }
+
+    #[test]
+    fn test_s_reduce() {
+        let envr = &Envr::new();
+        let s = s!(s!(), s!(lit_num!(42)));
+        assert!(run_node(&s, envr) == lit_num!(42));        
+        let s = s!(s!(Node::Plus, lit_num!(42)));
+        assert!(run_node(&s, envr) == lit_num!(42));        
     }
 
     #[test]

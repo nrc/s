@@ -12,6 +12,7 @@ pub enum Node {
     Plus,
     Fn,
     Let,
+    Macro,
     Print,
     Ident(Str),
     LitNum(u32),
@@ -19,7 +20,7 @@ pub enum Node {
 }
 
 impl Node {
-    fn push(&mut self, n: Node) {
+    pub fn push(&mut self, n: Node) {
         match *self {
             Node::Program(ref mut ns) | Node::S(ref mut ns) => ns.push(n),
             _ => panic!("Can't push to {:?}", self),
@@ -55,6 +56,29 @@ impl Node {
             s
         } else {
             panic!("expected Ident, found {:?}", self)
+        }
+    }
+
+    pub fn subst(&self, from: &[Str], to: &[Node]) -> Node {
+        match *self {
+            Node::Program(ref ns) => Node::Program(ns.into_iter().map(|n| n.subst(from, to)).collect()),
+            Node::S(ref ns) => Node::S(ns.into_iter().map(|n| n.subst(from, to)).collect()),
+            Node::Ident(ref s) => {
+                for (f, t) in from.iter().zip(to.iter()) {
+                    if f == s {
+                        return t.clone();
+                    }
+                }
+
+                Node::Ident(s.clone())
+            }
+            Node::Plus |
+            Node::Fn |
+            Node::Let |
+            Node::Macro |
+            Node::Print |
+            Node::LitNum(_) |
+            Node::LitStr(_) => self.clone(),
         }
     }
 }
@@ -105,6 +129,7 @@ impl fmt::Display for Node {
             Node::Plus => try!(write!(f, "+")),
             Node::Fn => try!(write!(f, "fn")),
             Node::Let => try!(write!(f, "let")),
+            Node::Macro => try!(write!(f, "macro")),
             Node::Print => try!(write!(f, "print")),
             Node::Ident(ref s) => try!(write!(f, "{}", s)),
             Node::LitNum(n) => try!(write!(f, "{}", n)),
@@ -143,6 +168,7 @@ pub fn parse(input: &[Token]) -> Node {
             Token::Keyword("+") => cur_node.push(Node::Plus),
             Token::Keyword("fn") => cur_node.push(Node::Fn),
             Token::Keyword("let") => cur_node.push(Node::Let),
+            Token::Keyword("macro") => cur_node.push(Node::Macro),
             Token::Keyword("print") => cur_node.push(Node::Print),
             Token::Name(ref s) => cur_node.push(Node::Ident(s.clone())),
             Token::Number(n) => cur_node.push(Node::LitNum(n)),
