@@ -1,0 +1,10 @@
+[package]
+
+name = "s"
+version = "0.0.1"
+authors = ["Nicholas Cameron <nrc@ncameron.org>"]
+description = "Messing around with s-expressions"
+repository = "https://github.com/nrc/s"
+
+#[dependencies]
+#crossbeam = "0.1.4"
